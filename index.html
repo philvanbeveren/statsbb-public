@@ -23,7 +23,7 @@
       border:1px solid var(--line); background:var(--card); color:var(--text);
       padding:9px 10px; border-radius:10px; font-size:13px; outline:none;
     }
-    .search { min-width:260px; flex:1; }
+    .search { min-width:240px; flex:1; }
     main { padding:16px; }
     .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
     .meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; }
@@ -39,8 +39,9 @@
     .right { text-align:right; }
     .empty { padding:18px; color:var(--muted); font-size:13px; }
     footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
+    code { color:#cfe0ff; }
 
-    .player-link { cursor:pointer; color:#cfe0ff; font-weight:700; }
+    .player-link { cursor:pointer; color:#cfe0ff; font-weight:800; }
     .player-link:hover { text-decoration: underline; }
 
     /* modal */
@@ -80,6 +81,7 @@
     .btn:hover{ background:rgba(255,255,255,.07); }
     .btn.primary{ border-color:#36508a; background:rgba(54,80,138,.25); }
     .modal-body{ padding:14px; display:grid; gap:12px; }
+
     .grid{
       display:grid;
       grid-template-columns: repeat(4, minmax(0,1fr));
@@ -96,6 +98,7 @@
     }
     .statbox .label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
     .statbox .value{ margin-top:6px; font-size:18px; font-weight:900; }
+
     .section{
       border:1px solid var(--line);
       background:rgba(255,255,255,.02);
@@ -103,25 +106,36 @@
       padding:12px;
     }
     .section h3{ margin:0 0 10px; font-size:13px; color:#dbe7ff; letter-spacing:.2px; }
+    .tag { font-size:12px; color:var(--muted); }
+
     .small-table { min-width: 0; width:100%; border-collapse:collapse; }
     .small-table th, .small-table td { padding:8px 8px; border-bottom:1px solid rgba(255,255,255,.08); font-size:13px; }
     .small-table th { background:rgba(255,255,255,.03); position:static; cursor:default; }
     .small-table tr:last-child td { border-bottom:none; }
-    .tag { font-size:12px; color:var(--muted); }
-    code { color:#cfe0ff; }
+
+    .filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .filters .muted { font-size:13px; }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
       <h1>StatsBasketballBelgium — Stats Dashboard</h1>
-      <div class="sub">Klik op speler (ook in Players tab) voor details: info + regular + playoffs + awards (later).</div>
+      <div class="sub">Klik op speler voor details. Filters (season/division) werken op Regular/Playoffs.</div>
 
       <div class="toolbar">
         <div class="tabs">
           <button class="tab active" data-dataset="players">Players</button>
           <button class="tab" data-dataset="regular">Regular season</button>
           <button class="tab" data-dataset="playoffs">Playoffs</button>
+        </div>
+
+        <div class="filters" id="filters" style="display:none;">
+          <label class="muted">Season</label>
+          <select id="seasonFilter"></select>
+
+          <label class="muted">Division</label>
+          <select id="divisionFilter"></select>
         </div>
 
         <input id="search" class="search" placeholder="Zoek op naam, club, ID… (live)" />
@@ -183,21 +197,14 @@
   </div>
 
   <script>
-    // -------------------------------
-    // Files
-    // -------------------------------
     const FILES = {
       players: "site/data/players.json",
       regular: "site/data/stats_regular.json",
       playoffs: "site/data/stats_playoffs.json",
     };
 
-    // -------------------------------
-    // Division mapping (PAS AAN)
-    // Zet hier jouw echte namen. Fallback = nummer tonen.
-    // -------------------------------
+    // Division mapping
     const DIVISION_LABELS = {
-      // voorbeelden — vul aan zoals jij wilt:
       "1": "Euromillions League",
       "2": "HSE - 1e Landelijke",
       "3": "HSE - 2e Landelijke A",
@@ -215,38 +222,24 @@
       "15": "HSE - Régional 2A",
       "16": "HSE - Régional 2B",
       "17": "Play-offs TDM1",
-      "18": "Play-offs TDM2",
-      // "1": "1e Landelijke Heren",
-      // "2": "2e Landelijke Heren",
-      // ...
+      "18": "Play-offs TDM2"
     };
 
-    // -------------------------------
-    // Column order per tab (PAS AAN)
-    // -------------------------------
-const COLUMN_ORDER = {
-  players: ["full_name", "birth_date", "player_id", "slug"],
+    // Column order per tab (JSON keys!)
+    const COLUMN_ORDER = {
+      players: ["full_name","birth_date","height","country","position","player_id","slug"],
+      regular: ["player_name","season_name","division_name","gp","min","pts","reb","ast","stl","blk","to","fls","twopm","twopa","threepm","threepa","ftm","fta","slug"],
+      playoffs: ["player_name","season_name","division_name","gp","min","pts","reb","ast","stl","blk","to","fls","twopm","twopa","threepm","threepa","ftm","fta","slug"],
+    };
 
-  regular: [
-  "player_name",
-  "season_name","division_name",
-  "gp","min","pts","reb","ast","stl","blk","to","fls",
-  "twopm","twopa","threepm","threepa","ftm","fta",
-  "slug"
-  ],
-  playoffs: [
-  "player_name",
-  "season_name","division_name",
-  "gp","min","pts","reb","ast","stl","blk","to","fls",
-  "twopm","twopa","threepm","threepa","ftm","fta",
-  "slug"
-  ],
-  };
-    // Labels in headers
+    // Column labels (headers)
     const COLUMN_LABELS = {
-      full_name: "player",
       player_name: "player",
-      birth_date: "birth_date",
+      full_name: "player",
+      birth_date: "birth",
+      height: "height",
+      country: "country",
+      position: "position",
       player_id: "player_id",
       season_name: "season",
       division_name: "division",
@@ -268,9 +261,6 @@ const COLUMN_ORDER = {
       slug: "slug",
     };
 
-    // -------------------------------
-    // State
-    // -------------------------------
     const state = {
       active: "players",
       raw: { players: null, regular: null, playoffs: null },
@@ -280,11 +270,11 @@ const COLUMN_ORDER = {
       sortDir: "desc",
       search: "",
       limit: 100,
-      // indexes
+      filterSeason: "",
+      filterDivision: "",
       idxPlayersBySlug: new Map(),
       idxRegularBySlug: new Map(),
       idxPlayoffsBySlug: new Map(),
-      // modal
       modal: { open:false, slug:null }
     };
 
@@ -298,7 +288,9 @@ const COLUMN_ORDER = {
       status: document.getElementById("status"),
       metaLeft: document.getElementById("metaLeft"),
       metaRight: document.getElementById("metaRight"),
-      // modal
+      filters: document.getElementById("filters"),
+      seasonFilter: document.getElementById("seasonFilter"),
+      divisionFilter: document.getElementById("divisionFilter"),
       modalBackdrop: document.getElementById("modalBackdrop"),
       mName: document.getElementById("mName"),
       mSub: document.getElementById("mSub"),
@@ -306,9 +298,6 @@ const COLUMN_ORDER = {
       mClose: document.getElementById("mClose"),
     };
 
-    // -------------------------------
-    // Helpers
-    // -------------------------------
     function isNumberLike(v) {
       if (v === null || v === undefined) return false;
       if (typeof v === "number") return Number.isFinite(v);
@@ -320,28 +309,17 @@ const COLUMN_ORDER = {
       }
       return false;
     }
-function enrichStatsWithPlayerNames() {
-  const playersBySlug = state.idxPlayersBySlug; // slug -> player object
-
-  function enrichDataset(key) {
-    const rows = normalizeToRows(state.raw[key]);
-    for (const r of rows) {
-      const slug = r?.slug;
-      const p = (typeof slug === "string") ? playersBySlug.get(slug) : null;
-      r.player_name = p?.full_name || slug || "";
-    }
-  }
-
-  enrichDataset("regular");
-  enrichDataset("playoffs");
-}
-
     function toNumber(v) {
       if (typeof v === "number") return v;
       if (typeof v === "string") return Number(v.trim().replace(",", "."));
       return NaN;
     }
-
+    function safeNum(x){ const n = toNumber(x); return Number.isFinite(n) ? n : 0; }
+    function pct(m,a){
+      const mm = safeNum(m), aa = safeNum(a);
+      if (aa <= 0) return "—";
+      return (mm/aa*100).toFixed(1) + "%";
+    }
     function escapeHtml(str) {
       return String(str)
         .replaceAll("&", "&amp;")
@@ -350,7 +328,6 @@ function enrichStatsWithPlayerNames() {
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
     }
-
     function normalizeToRows(data) {
       if (Array.isArray(data)) return data;
       if (data && Array.isArray(data.data)) return data.data;
@@ -360,35 +337,15 @@ function enrichStatsWithPlayerNames() {
       }
       return [];
     }
-
     async function loadJson(url) {
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
       return await res.json();
     }
-
     async function ensureDatasetLoaded(key) {
       if (state.raw[key]) return;
       el.status.textContent = `Loading ${key}…`;
       state.raw[key] = await loadJson(FILES[key]);
-    }
-
-    function pickColumnsForActive(rows, active) {
-      // Use forced order if available, but only keep cols that exist in data.
-      const forced = COLUMN_ORDER[active] || [];
-      const existing = new Set();
-
-      for (const r of rows) {
-        if (r && typeof r === "object") Object.keys(r).forEach(k => existing.add(k));
-      }
-
-      const cols = [];
-      for (const k of forced) if (existing.has(k)) cols.push(k);
-
-      // Add any remaining keys not listed
-      for (const k of existing) if (!cols.includes(k)) cols.push(k);
-
-      return cols;
     }
 
     function labelForDivision(div) {
@@ -396,15 +353,23 @@ function enrichStatsWithPlayerNames() {
       const key = String(div);
       return DIVISION_LABELS[key] || key;
     }
-
-    function headerLabel(col) {
-      return COLUMN_LABELS[col] || col;
-    }
+    function headerLabel(col) { return COLUMN_LABELS[col] || col; }
 
     function formatCell(col, v) {
       if (v === null || v === undefined) return "";
       if (col === "division_name") return labelForDivision(v);
       return String(v);
+    }
+
+    function pickColumnsForActive(rows, active) {
+      const forced = COLUMN_ORDER[active] || [];
+      const existing = new Set();
+      for (const r of rows) if (r && typeof r === "object") Object.keys(r).forEach(k => existing.add(k));
+
+      const cols = [];
+      for (const k of forced) if (existing.has(k)) cols.push(k);
+      for (const k of existing) if (!cols.includes(k)) cols.push(k);
+      return cols;
     }
 
     function getSearchHaystack(row) {
@@ -417,12 +382,33 @@ function enrichStatsWithPlayerNames() {
       }).join(" ").toLowerCase();
     }
 
+    function rowMatchesFilters(r) {
+      // filters only for stats tabs
+      if (!(state.active === "regular" || state.active === "playoffs")) return true;
+
+      if (state.filterSeason && String(r?.season_name ?? "") !== state.filterSeason) return false;
+
+      if (state.filterDivision) {
+        const raw = String(r?.division_name ?? "");
+        // accept match by raw code OR by label (handy)
+        const lbl = labelForDivision(raw);
+        if (raw !== state.filterDivision && lbl !== state.filterDivision) return false;
+      }
+
+      return true;
+    }
+
     function applySearchLimitSort() {
       let rows = state.rows;
 
+      // Filters first
+      rows = rows.filter(rowMatchesFilters);
+
+      // Search
       const q = state.search.trim().toLowerCase();
       if (q) rows = rows.filter(r => getSearchHaystack(r).includes(q));
 
+      // Sort
       if (state.sortKey) {
         const k = state.sortKey;
         const dir = state.sortDir === "asc" ? 1 : -1;
@@ -430,13 +416,10 @@ function enrichStatsWithPlayerNames() {
         rows = rows.slice().sort((a,b) => {
           let av = a?.[k];
           let bv = b?.[k];
-
-          // special: sort by division label instead of number
           if (k === "division_name") { av = labelForDivision(av); bv = labelForDivision(bv); }
 
           const an = isNumberLike(av);
           const bn = isNumberLike(bv);
-
           if (an && bn) return (toNumber(av) - toNumber(bv)) * dir;
 
           const as = av === null || av === undefined ? "" : String(av);
@@ -445,15 +428,11 @@ function enrichStatsWithPlayerNames() {
         });
       }
 
-      rows = rows.slice(0, state.limit);
-      return rows;
+      // Limit
+      return rows.slice(0, state.limit);
     }
 
-    // -------------------------------
-    // Indexes (for fast player modal)
-    // -------------------------------
     function buildIndexes() {
-      // players -> slug map
       state.idxPlayersBySlug.clear();
       const players = normalizeToRows(state.raw.players);
       for (const p of players) {
@@ -461,7 +440,6 @@ function enrichStatsWithPlayerNames() {
         if (typeof slug === "string" && slug) state.idxPlayersBySlug.set(slug, p);
       }
 
-      // stats -> slug -> array
       function fill(map, rows) {
         map.clear();
         for (const r of rows) {
@@ -471,33 +449,54 @@ function enrichStatsWithPlayerNames() {
           map.get(slug).push(r);
         }
       }
-
       fill(state.idxRegularBySlug, normalizeToRows(state.raw.regular));
       fill(state.idxPlayoffsBySlug, normalizeToRows(state.raw.playoffs));
-
-      // sort each player's rows: season desc then division
-      function sortRows(arr) {
-        arr.sort((a,b) => {
-          const sa = a?.season_name ?? "";
-          const sb = b?.season_name ?? "";
-          if (sa !== sb) return String(sb).localeCompare(String(sa), "nl", { numeric:true });
-          const da = String(a?.division_name ?? "");
-          const db = String(b?.division_name ?? "");
-          return db.localeCompare(da, "nl", { numeric:true });
-        });
-      }
-      for (const arr of state.idxRegularBySlug.values()) sortRows(arr);
-      for (const arr of state.idxPlayoffsBySlug.values()) sortRows(arr);
     }
 
-    // -------------------------------
-    // Modal rendering
-    // -------------------------------
-    function safeNum(x){ const n = toNumber(x); return Number.isFinite(n) ? n : 0; }
-    function pct(m,a){
-      const mm = safeNum(m), aa = safeNum(a);
-      if (aa <= 0) return "—";
-      return (mm/aa*100).toFixed(1) + "%";
+    function enrichStatsWithPlayerNames() {
+      function enrich(key) {
+        const rows = normalizeToRows(state.raw[key]);
+        for (const r of rows) {
+          const slug = r?.slug;
+          const p = (typeof slug === "string") ? state.idxPlayersBySlug.get(slug) : null;
+          r.player_name = p?.full_name || slug || "";
+        }
+      }
+      enrich("regular");
+      enrich("playoffs");
+    }
+
+    function populateFiltersFromRows(rows) {
+      // only stats tabs show filters
+      const isStats = state.active === "regular" || state.active === "playoffs";
+      el.filters.style.display = isStats ? "flex" : "none";
+      if (!isStats) return;
+
+      const seasons = new Set();
+      const divisionsRaw = new Set();
+
+      for (const r of rows) {
+        if (r?.season_name) seasons.add(String(r.season_name));
+        if (r?.division_name !== undefined && r?.division_name !== null) divisionsRaw.add(String(r.division_name));
+      }
+
+      const seasonList = Array.from(seasons).sort((a,b) => b.localeCompare(a, "nl", { numeric:true }));
+      const divisionList = Array.from(divisionsRaw).sort((a,b) => labelForDivision(a).localeCompare(labelForDivision(b), "nl", { numeric:true }));
+
+      // Build season select
+      el.seasonFilter.innerHTML = `<option value="">All seasons</option>` + seasonList.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+      // keep selection if still valid
+      if (state.filterSeason && seasonList.includes(state.filterSeason)) el.seasonFilter.value = state.filterSeason;
+      else { state.filterSeason = ""; el.seasonFilter.value = ""; }
+
+      // Build division select: store raw code as value, show label
+      el.divisionFilter.innerHTML = `<option value="">All divisions</option>` + divisionList.map(d => {
+        const lbl = labelForDivision(d);
+        return `<option value="${escapeHtml(d)}">${escapeHtml(lbl)}</option>`;
+      }).join("");
+
+      if (state.filterDivision && divisionList.includes(state.filterDivision)) el.divisionFilter.value = state.filterDivision;
+      else { state.filterDivision = ""; el.divisionFilter.value = ""; }
     }
 
     function openPlayerModal(slug) {
@@ -520,12 +519,7 @@ function enrichStatsWithPlayerNames() {
 
     function renderStatsTable(title, rows) {
       if (!rows || rows.length === 0) {
-        return `
-          <div class="section">
-            <h3>${escapeHtml(title)}</h3>
-            <div class="tag">Geen data.</div>
-          </div>
-        `;
+        return `<div class="section"><h3>${escapeHtml(title)}</h3><div class="tag">Geen data.</div></div>`;
       }
 
       const cols = ["season_name","division_name","gp","min","pts","reb","ast","stl","blk","to","fls","twopm","twopa","threepm","threepa","ftm","fta"]
@@ -541,14 +535,8 @@ function enrichStatsWithPlayerNames() {
         return `<tr>${tds}</tr>`;
       }).join("");
 
-      // quick totals (sum) across rows (useful when multiple seasons/divisions)
       const sum = (key) => rows.reduce((acc,r) => acc + safeNum(r?.[key]), 0);
-      const gp = sum("gp");
-      const pts = sum("pts");
-      const reb = sum("reb");
-      const ast = sum("ast");
-      const min = sum("min");
-
+      const gp = sum("gp"), pts = sum("pts"), reb = sum("reb"), ast = sum("ast"), min = sum("min");
       const twopm = sum("twopm"), twopa = sum("twopa");
       const threepm = sum("threepm"), threepa = sum("threepa");
       const ftm = sum("ftm"), fta = sum("fta");
@@ -593,14 +581,22 @@ function enrichStatsWithPlayerNames() {
       const fullName = player?.full_name || slug;
       const birth = player?.birth_date || "—";
       const pid = player?.player_id ?? "—";
+      const height = (player?.height ?? "—");
+      const country = (player?.country ?? "—");
+      const position = (player?.position ?? "—");
 
       el.mName.textContent = fullName;
-      el.mSub.textContent = `slug: ${slug} • player_id: ${pid} • birth_date: ${birth}`;
+      el.mSub.textContent = `slug: ${slug} • player_id: ${pid}`;
 
       el.mBody.innerHTML = `
         <div class="section">
           <h3>Player info</h3>
-          <div class="tag">Hier komt later extra info (club, positie, foto, …) zodra die data in JSON zit.</div>
+          <div class="tag">
+            Birth: <b>${escapeHtml(String(birth))}</b> •
+            Height: <b>${escapeHtml(String(height))}</b> •
+            Country: <b>${escapeHtml(String(country))}</b> •
+            Position: <b>${escapeHtml(String(position))}</b>
+          </div>
         </div>
 
         ${renderStatsTable("Regular season", regularRows)}
@@ -613,14 +609,11 @@ function enrichStatsWithPlayerNames() {
       `;
     }
 
-    // -------------------------------
-    // Main render
-    // -------------------------------
     function render() {
       const shown = applySearchLimitSort();
 
       el.metaLeft.textContent = `Dataset: ${state.active}`;
-      el.metaRight.textContent = `Totaal rijen: ${state.rows.length} • Getoond: ${shown.length} • Sort: ${state.sortKey ?? "—"} (${state.sortDir})`;
+      el.metaRight.textContent = `Totaal rijen: ${state.rows.length} • Na filters/zoek: ${shown.length} • Sort: ${state.sortKey ?? "—"} (${state.sortDir})`;
 
       el.empty.style.display = shown.length ? "none" : "block";
 
@@ -639,29 +632,20 @@ function enrichStatsWithPlayerNames() {
           const rawVal = r?.[col];
           const cls = isNumberLike(rawVal) ? "right" : "";
 
-          // Make player clickable:
-          // - players tab: click full_name or slug
-          // - stats tab: click slug (and also click full_name if it exists)
-          if (isPlayersTab) {
-            if (col === "full_name") {
-              const slug = r?.slug;
-              if (typeof slug === "string" && slug) {
-                return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
-              }
-            }
-            if (col === "slug") {
-              const slug = rawVal;
-              if (typeof slug === "string" && slug) {
-                return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
-              }
+          // clickable player cells
+          if (isPlayersTab && (col === "full_name" || col === "slug")) {
+            const slug = r?.slug;
+            if (typeof slug === "string" && slug) {
+              return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
             }
           }
-if (isStatsTab && col === "player_name") {
-  const slug = r?.slug;
-  if (typeof slug === "string" && slug) {
-    return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
-  }
-}
+
+          if (isStatsTab && col === "player_name") {
+            const slug = r?.slug;
+            if (typeof slug === "string" && slug) {
+              return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
+            }
+          }
 
           if (isStatsTab && col === "slug") {
             const slug = rawVal;
@@ -677,7 +661,7 @@ if (isStatsTab && col === "player_name") {
 
       el.tbody.innerHTML = rowsHtml;
 
-      // Sort click
+      // sort click
       el.thead.querySelectorAll("th").forEach(th => {
         th.addEventListener("click", () => {
           const col = th.getAttribute("data-col");
@@ -687,7 +671,7 @@ if (isStatsTab && col === "player_name") {
         });
       });
 
-      // Player click -> modal
+      // player click -> modal
       el.tbody.querySelectorAll(".player-link").forEach(span => {
         span.addEventListener("click", () => openPlayerModal(span.getAttribute("data-slug")));
       });
@@ -703,7 +687,9 @@ if (isStatsTab && col === "player_name") {
       state.rows = rows;
       state.cols = pickColumnsForActive(rows, key);
 
-      // Default sort: players -> full_name asc, stats -> pts desc if exists, else season desc
+      populateFiltersFromRows(rows);
+
+      // default sort
       if (key === "players") {
         state.sortKey = state.cols.includes("full_name") ? "full_name" : (state.cols[0] ?? null);
         state.sortDir = "asc";
@@ -717,41 +703,27 @@ if (isStatsTab && col === "player_name") {
       render();
     }
 
-    // -------------------------------
     // Events
-    // -------------------------------
     el.tabs.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.dataset)));
+    el.search.addEventListener("input", (e) => { state.search = e.target.value; render(); });
+    el.limit.addEventListener("change", (e) => { state.limit = Number(e.target.value); render(); });
 
-    el.search.addEventListener("input", (e) => {
-      state.search = e.target.value;
-      render();
-    });
-
-    el.limit.addEventListener("change", (e) => {
-      state.limit = Number(e.target.value);
-      render();
-    });
+    el.seasonFilter.addEventListener("change", (e) => { state.filterSeason = e.target.value; render(); });
+    el.divisionFilter.addEventListener("change", (e) => { state.filterDivision = e.target.value; render(); });
 
     el.mClose.addEventListener("click", closeModal);
-    el.modalBackdrop.addEventListener("click", (e) => {
-      if (e.target === el.modalBackdrop) closeModal();
-    });
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && state.modal.open) closeModal();
-    });
+    el.modalBackdrop.addEventListener("click", (e) => { if (e.target === el.modalBackdrop) closeModal(); });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.modal.open) closeModal(); });
 
-    // -------------------------------
     // Boot
-    // -------------------------------
     (async function init() {
       try {
         await ensureDatasetLoaded("players");
         await ensureDatasetLoaded("regular");
         await ensureDatasetLoaded("playoffs");
         buildIndexes();
-enrichStatsWithPlayerNames();
-await setActive("players");
-
+        enrichStatsWithPlayerNames();
+        await setActive("players");
       } catch (e) {
         console.error(e);
         el.status.textContent = "Fout bij laden van JSON.";
