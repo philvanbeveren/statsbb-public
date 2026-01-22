@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StatsBasketballBelgium — Stats</title>
+  <style>
+    :root { --bg:#0b0f19; --card:#11182a; --muted:#93a4c7; --text:#e7eeff; --line:#23314f; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:24px 16px 12px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,15,25,.92); backdrop-filter: blur(10px); z-index:10; }
+    .wrap { max-width:1200px; margin:0 auto; }
+    h1 { margin:0 0 10px; font-size:20px; letter-spacing:.3px; }
+    .sub { color:var(--muted); font-size:13px; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; }
+    .tab {
+      border:1px solid var(--line); background:transparent; color:var(--text);
+      padding:8px 10px; border-radius:10px; cursor:pointer; font-size:13px;
+    }
+    .tab.active { background:var(--card); border-color:#36508a; }
+    .search, select {
+      border:1px solid var(--line); background:var(--card); color:var(--text);
+      padding:9px 10px; border-radius:10px; font-size:13px; outline:none;
+    }
+    .search { min-width:260px; flex:1; }
+    main { padding:16px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .meta { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .pill { font-size:12px; color:var(--muted); }
+    .status { font-size:12px; color:var(--muted); }
+    .table-wrap { overflow:auto; border-radius:12px; border:1px solid var(--line); }
+    table { width:100%; border-collapse:collapse; min-width:900px; }
+    th, td { padding:10px 10px; border-bottom:1px solid var(--line); font-size:13px; white-space:nowrap; }
+    th { position:sticky; top:0; background:#0f1730; cursor:pointer; user-select:none; text-align:left; }
+    th .arrow { opacity:.7; margin-left:6px; }
+    tr:hover td { background:rgba(255,255,255,.03); }
+    .muted { color:var(--muted); }
+    .right { text-align:right; }
+    .empty { padding:18px; color:var(--muted); font-size:13px; }
+    footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
+    a { color:#9bb8ff; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>StatsBasketballBelgium — Stats Dashboard</h1>
+      <div class="sub">Leest JSON uit <code>site/data/</code> (players + stats). Tabs, zoeken, sorteren.</div>
+
+      <div class="toolbar">
+        <div class="tabs">
+          <button class="tab active" data-dataset="players">Players</button>
+          <button class="tab" data-dataset="regular">Regular season</button>
+          <button class="tab" data-dataset="playoffs">Playoffs</button>
+        </div>
+
+        <input id="search" class="search" placeholder="Zoek op naam, club, ID… (live)" />
+
+        <label class="muted" style="font-size:13px;">Toon</label>
+        <select id="limit">
+          <option value="50">50 rijen</option>
+          <option value="100" selected>100 rijen</option>
+          <option value="250">250 rijen</option>
+          <option value="1000">1000 rijen</option>
+          <option value="999999">Alles</option>
+        </select>
+
+        <span id="status" class="status">Loading…</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="card">
+        <div class="meta">
+          <div class="pill" id="metaLeft">—</div>
+          <div class="pill" id="metaRight">—</div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="table">
+            <thead id="thead"></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+        <div id="empty" class="empty" style="display:none;">Geen resultaten.</div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Powered by GitHub Pages • Data: <code>site/data/*.json</code>
+    </div>
+  </footer>
+
+  <script>
+    // -------------------------------
+    // Config: waar je JSON's staan
+    // -------------------------------
+    const FILES = {
+      players: "site/data/players.json",
+      regular: "site/data/stats_regular.json",
+      playoffs: "site/data/stats_playoffs.json",
+    };
+
+    // -------------------------------
+    // State
+    // -------------------------------
+    const state = {
+      active: "players",
+      raw: { players: null, regular: null, playoffs: null },
+      rows: [],
+      cols: [],
+      sortKey: null,
+      sortDir: "desc",
+      search: "",
+      limit: 100,
+    };
+
+    const el = {
+      tabs: Array.from(document.querySelectorAll(".tab")),
+      search: document.getElementById("search"),
+      limit: document.getElementById("limit"),
+      thead: document.getElementById("thead"),
+      tbody: document.getElementById("tbody"),
+      empty: document.getElementById("empty"),
+      status: document.getElementById("status"),
+      metaLeft: document.getElementById("metaLeft"),
+      metaRight: document.getElementById("metaRight"),
+    };
+
+    // -------------------------------
+    // Helpers
+    // -------------------------------
+    function isNumberLike(v) {
+      if (v === null || v === undefined) return false;
+      if (typeof v === "number") return Number.isFinite(v);
+      if (typeof v === "string") {
+        const s = v.trim().replace(",", ".");
+        if (s === "") return false;
+        const n = Number(s);
+        return Number.isFinite(n);
+      }
+      return false;
+    }
+
+    function toNumber(v) {
+      if (typeof v === "number") return v;
+      if (typeof v === "string") return Number(v.trim().replace(",", "."));
+      return NaN;
+    }
+
+    function formatCell(v) {
+      if (v === null || v === undefined) return "";
+      if (typeof v === "object") return JSON.stringify(v);
+      return String(v);
+    }
+
+    function detectColumns(rows) {
+      // Neem keys van de grootste objecten, en hou volgorde stabiel
+      const keySet = new Map();
+      for (const r of rows) {
+        if (!r || typeof r !== "object") continue;
+        for (const k of Object.keys(r)) {
+          if (!keySet.has(k)) keySet.set(k, 0);
+          keySet.set(k, keySet.get(k) + 1);
+        }
+      }
+      // Sorteer: meest voorkomende eerst, daarna alfabetisch (maar stabiel)
+      const keys = Array.from(keySet.entries())
+        .sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0]))
+        .map(([k]) => k);
+
+      // Kleine “quality of life”: zet typische ID/naam velden vooraan als ze bestaan
+      const preferred = ["player", "player_name", "name", "first_name", "last_name", "team", "club", "season", "division", "games", "gp", "pts", "points"];
+      const front = [];
+      const rest = [];
+
+      for (const k of keys) {
+        if (preferred.includes(k)) front.push(k);
+        else rest.push(k);
+      }
+      return [...front, ...rest];
+    }
+
+    function getSearchHaystack(row) {
+      // Maak 1 string van alle velden om te zoeken
+      if (!row || typeof row !== "object") return "";
+      return Object.values(row).map(v => {
+        if (v === null || v === undefined) return "";
+        if (typeof v === "object") return JSON.stringify(v);
+        return String(v);
+      }).join(" ").toLowerCase();
+    }
+
+    function applySearchLimitSort() {
+      let rows = state.rows;
+
+      // Search
+      const q = state.search.trim().toLowerCase();
+      if (q) {
+        rows = rows.filter(r => getSearchHaystack(r).includes(q));
+      }
+
+      // Sort
+      if (state.sortKey) {
+        const k = state.sortKey;
+        const dir = state.sortDir === "asc" ? 1 : -1;
+
+        rows = rows.slice().sort((a,b) => {
+          const av = a?.[k];
+          const bv = b?.[k];
+
+          const an = isNumberLike(av);
+          const bn = isNumberLike(bv);
+
+          if (an && bn) return (toNumber(av) - toNumber(bv)) * dir;
+
+          // strings fallback
+          const as = av === null || av === undefined ? "" : String(av);
+          const bs = bv === null || bv === undefined ? "" : String(bv);
+          return as.localeCompare(bs, "nl", { numeric: true, sensitivity: "base" }) * dir;
+        });
+      }
+
+      // Limit
+      rows = rows.slice(0, state.limit);
+
+      return rows;
+    }
+
+    function render() {
+      const shown = applySearchLimitSort();
+
+      el.metaLeft.textContent = `Dataset: ${state.active}`;
+      el.metaRight.textContent = `Totaal rijen: ${state.rows.length} • Getoond: ${shown.length} • Sort: ${state.sortKey ?? "—"} (${state.sortDir})`;
+
+      // Empty
+      el.empty.style.display = shown.length ? "none" : "block";
+
+      // Header
+      const ths = state.cols.map(col => {
+        const arrow = state.sortKey === col ? (state.sortDir === "asc" ? "▲" : "▼") : "↕";
+        return `<th data-col="${col}">${col}<span class="arrow">${arrow}</span></th>`;
+      }).join("");
+
+      el.thead.innerHTML = `<tr>${ths}</tr>`;
+
+      // Body
+      const rowsHtml = shown.map(r => {
+        const tds = state.cols.map(col => {
+          const v = r?.[col];
+          const cls = isNumberLike(v) ? "right" : "";
+          return `<td class="${cls}">${escapeHtml(formatCell(v))}</td>`;
+        }).join("");
+        return `<tr>${tds}</tr>`;
+      }).join("");
+
+      el.tbody.innerHTML = rowsHtml;
+
+      // Add header click sorting
+      el.thead.querySelectorAll("th").forEach(th => {
+        th.addEventListener("click", () => {
+          const col = th.getAttribute("data-col");
+          if (state.sortKey === col) {
+            state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+          } else {
+            state.sortKey = col;
+            state.sortDir = "desc";
+          }
+          render();
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function loadJson(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+      return await res.json();
+    }
+
+    function normalizeToRows(data) {
+      // ondersteunt: array van objects, of object met .data, of object keyed map
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.data)) return data.data;
+      if (data && typeof data === "object") {
+        // keyed map -> maak array
+        const vals = Object.values(data);
+        if (vals.every(v => typeof v === "object")) return vals;
+      }
+      return [];
+    }
+
+    async function ensureDatasetLoaded(key) {
+      if (state.raw[key]) return;
+
+      el.status.textContent = `Loading ${key}…`;
+      try {
+        const data = await loadJson(FILES[key]);
+        state.raw[key] = data;
+      } catch (e) {
+        console.error(e);
+        el.status.textContent = `Fout: kan ${FILES[key]} niet laden.`;
+        throw e;
+      }
+    }
+
+    async function setActive(key) {
+      state.active = key;
+      el.tabs.forEach(t => t.classList.toggle("active", t.dataset.dataset === key));
+
+      await ensureDatasetLoaded(key);
+
+      const rows = normalizeToRows(state.raw[key]);
+      state.rows = rows;
+
+      state.cols = detectColumns(rows);
+
+      // default sort: eerste numerieke kolom (als die bestaat), anders op eerste kolom
+      const numericCol = state.cols.find(c => rows.some(r => isNumberLike(r?.[c])));
+      state.sortKey = numericCol ?? state.cols[0] ?? null;
+      state.sortDir = numericCol ? "desc" : "asc";
+
+      el.status.textContent = `OK • ${rows.length} rijen geladen`;
+      render();
+    }
+
+    // -------------------------------
+    // Events
+    // -------------------------------
+    el.tabs.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.dataset)));
+
+    el.search.addEventListener("input", (e) => {
+      state.search = e.target.value;
+      render();
+    });
+
+    el.limit.addEventListener("change", (e) => {
+      state.limit = Number(e.target.value);
+      render();
+    });
+
+    // -------------------------------
+    // Boot
+    // -------------------------------
+    (async function init() {
+      // start meteen met players, maar laad andere datasets niet tot je klikt
+      try {
+        await setActive("players");
+      } catch (e) {
+        // status al gezet
+      }
+    })();
+  </script>
+</body>
+</html>
