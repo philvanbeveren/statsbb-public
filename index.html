@@ -228,20 +228,24 @@ const COLUMN_ORDER = {
   players: ["full_name", "birth_date", "player_id", "slug"],
 
   regular: [
-    "slug","season_name","division_name",
-    "gp","min","pts","reb","ast","stl","blk","to","fls",
-    "twopm","twopa","threepm","threepa","ftm","fta",
-      ],
-
-  playoffs: [
-    "slug","season_name","division_name",
-    "gp","min","pts","reb","ast","stl","blk","to","fls",
-    "twopm","twopa","threepm","threepa","ftm","fta",
+  "player_name",
+  "season_name","division_name",
+  "gp","min","pts","reb","ast","stl","blk","to","fls",
+  "twopm","twopa","threepm","threepa","ftm","fta",
+  "slug"
   ],
-};
+  playoffs: [
+  "player_name",
+  "season_name","division_name",
+  "gp","min","pts","reb","ast","stl","blk","to","fls",
+  "twopm","twopa","threepm","threepa","ftm","fta",
+  "slug"
+  ],
+  };
     // Labels in headers
     const COLUMN_LABELS = {
       full_name: "player",
+      player_name: "player",
       birth_date: "birth_date",
       player_id: "player_id",
       season_name: "season",
@@ -316,6 +320,21 @@ const COLUMN_ORDER = {
       }
       return false;
     }
+function enrichStatsWithPlayerNames() {
+  const playersBySlug = state.idxPlayersBySlug; // slug -> player object
+
+  function enrichDataset(key) {
+    const rows = normalizeToRows(state.raw[key]);
+    for (const r of rows) {
+      const slug = r?.slug;
+      const p = (typeof slug === "string") ? playersBySlug.get(slug) : null;
+      r.player_name = p?.full_name || slug || "";
+    }
+  }
+
+  enrichDataset("regular");
+  enrichDataset("playoffs");
+}
 
     function toNumber(v) {
       if (typeof v === "number") return v;
@@ -637,6 +656,12 @@ const COLUMN_ORDER = {
               }
             }
           }
+if (isStatsTab && col === "player_name") {
+  const slug = r?.slug;
+  if (typeof slug === "string" && slug) {
+    return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
+  }
+}
 
           if (isStatsTab && col === "slug") {
             const slug = rawVal;
@@ -724,7 +749,9 @@ const COLUMN_ORDER = {
         await ensureDatasetLoaded("regular");
         await ensureDatasetLoaded("playoffs");
         buildIndexes();
-        await setActive("players");
+enrichStatsWithPlayerNames();
+await setActive("players");
+
       } catch (e) {
         console.error(e);
         el.status.textContent = "Fout bij laden van JSON.";
