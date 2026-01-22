@@ -198,8 +198,24 @@
     // -------------------------------
     const DIVISION_LABELS = {
       // voorbeelden — vul aan zoals jij wilt:
-      "11": "Division 11",
-      "16": "Division 16",
+      "1": "Euromillions League",
+      "2": "HSE - 1e Landelijke",
+      "3": "HSE - 2e Landelijke A",
+      "4": "HSE - 2e Landelijke B",
+      "5": "HSE - 1P Antwerpen",
+      "6": "HSE - 1P Limburg",
+      "7": "HSE - 1P Oost-Vlaanderen",
+      "8": "HSE - 1P Vlaams-Brabant",
+      "9": "HSE - 1P West-Vlaanderen",
+      "10": "Top Division Men 1",
+      "11": "Top Division Men 2A",
+      "12": "Top Division Men 2B",
+      "13": "BNXT League",
+      "14": "HSE - Régional 1",
+      "15": "HSE - Régional 2A",
+      "16": "HSE - Régional 2B",
+      "17": "Play-offs TDM1",
+      "18": "Play-offs TDM2",
       // "1": "1e Landelijke Heren",
       // "2": "2e Landelijke Heren",
       // ...
@@ -208,12 +224,21 @@
     // -------------------------------
     // Column order per tab (PAS AAN)
     // -------------------------------
-    const COLUMN_ORDER = {
-      players: ["full_name","birth_date","player_id","slug"],
-      regular: ["season_name","division_name","gp","min","pts","reb","ast","stl","blk","to","fls","twopm","twopa","threepm","threepa","ftm","fta","slug"],
-      playoffs: ["season_name","division_name","gp","min","pts","reb","ast","stl","blk","to","fls","twopm","twopa","threepm","threepa","ftm","fta","slug"],
-    };
+const COLUMN_ORDER = {
+  players: ["full_name", "birth_date", "player_id", "slug"],
 
+  regular: [
+    "slug","season_name","division_name",
+    "gp","min","pts","reb","ast","stl","blk","to","fls",
+    "twopm","twopa","threepm","threepa","ftm","fta",
+      ],
+
+  playoffs: [
+    "slug","season_name","division_name",
+    "gp","min","pts","reb","ast","stl","blk","to","fls",
+    "twopm","twopa","threepm","threepa","ftm","fta",
+  ],
+};
     // Labels in headers
     const COLUMN_LABELS = {
       full_name: "player",
