@@ -115,6 +115,43 @@
 
     .filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .filters .muted { font-size:13px; }
+    /* ================================
+   Mobile layout improvements
+   ================================ */
+@media (max-width: 820px) {
+  header { padding: 16px 12px 10px; }
+
+  .toolbar { gap: 8px; }
+  .tabs { width: 100%; }
+  .tab { flex: 1; text-align: center; }
+
+  #filters { width: 100%; flex-wrap: wrap; }
+  #filters select { flex: 1; min-width: 0; }
+
+  .search { width: 100%; min-width: 0; order: 50; }
+  #limit { width: 100%; }
+
+  .modal { width: 100%; height: 92vh; }
+  .modal-body { overflow: auto; max-height: calc(92vh - 70px); }
+}
+
+/* Sticky first column (player) on mobile */
+@media (max-width: 820px) {
+  table { min-width: 760px; }
+
+  th:first-child, td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #0f1730;
+  }
+
+  td:first-child {
+    background: rgba(17,24,42,1);
+    z-index: 1;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -469,7 +506,7 @@
     function populateFiltersFromRows(rows) {
       // only stats tabs show filters
       const isStats = state.active === "regular" || state.active === "playoffs";
-      el.filters.style.display = isStats ? "flex" : "none";
+      el.filters.style.display = "flex";
       if (!isStats) return;
 
       const seasons = new Set();
