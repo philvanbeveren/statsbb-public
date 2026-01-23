@@ -398,15 +398,15 @@
     }
 
     function pickColumnsForActive(rows, active) {
-      const forced = COLUMN_ORDER[active] || [];
-      const existing = new Set();
-      for (const r of rows) if (r && typeof r === "object") Object.keys(r).forEach(k => existing.add(k));
+      const forced = COLUMN_ORDER[active];
+       if (forced && forced.length) return forced;
 
-      const cols = [];
-      for (const k of forced) if (existing.has(k)) cols.push(k);
-      for (const k of existing) if (!cols.includes(k)) cols.push(k);
-      return cols;
+    // fallback: toon alles als er geen order is
+      const existing = new Set();
+        for (const r of rows) if (r && typeof r === "object") Object.keys(r).forEach(k => existing.add(k));
+        return Array.from(existing);
     }
+
 
     function getSearchHaystack(row) {
       if (!row || typeof row !== "object") return "";
