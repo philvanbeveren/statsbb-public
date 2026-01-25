@@ -295,7 +295,6 @@
       gp: "gp",
       pts: "pts",
       ppg: "ppg",
-      min: "min",
       reb: "reb",
       rpg: "rpg",
       ast: "ast",
@@ -305,6 +304,7 @@
       to: "to",
       blk: "blk",
       bpg: "bpg",
+      min: "min",
       fls: "fls",
       twopm: "2pm",
       twopa: "2pa",
@@ -576,7 +576,7 @@
         return `<div class="section"><h3>${escapeHtml(title)}</h3><div class="tag">Geen data.</div></div>`;
       }
 
-      const cols = ["season_name","division_name","gp","min","pts","reb","ast","stl","blk","to","fls","twopm","twopa","threepm","threepa","ftm","fta"]
+      const cols = ["season_name","division_name","gp","pts","ppg","reb","rpg","ast","apg","stl","spg","blk","bpg","to","min","fls","twopm","twopa","threepm","threepa","ftm","fta"]
         .filter(c => rows.some(r => r?.[c] !== undefined));
 
       const head = cols.map(c => `<th>${escapeHtml(headerLabel(c))}</th>`).join("");
