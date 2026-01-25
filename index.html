@@ -137,6 +137,15 @@
 
 /* Mobile cards */
 .cards { display: grid; gap: 10px; }
+.card-sort{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin: 10px 0 12px;
+}
+.card-sort .btn{
+  padding:7px 10px;
+}
 
 .card-item{
   border:1px solid var(--line);
@@ -259,6 +268,14 @@
             <thead id="thead"></thead>
             <tbody id="tbody"></tbody>
           </table>
+        </div>
+        <div id="cardSort" class="card-sort" style="display:none;">
+            <button class="btn" data-sort="pts">PTS</button>
+            <button class="btn" data-sort="ppg">PPG</button>
+            <button class="btn" data-sort="reb">REB</button>
+            <button class="btn" data-sort="rpg">RPG</button>
+            <button class="btn" data-sort="ast">AST</button>
+            <button class="btn" data-sort="apg">APG</button>
         </div>
         <div id="cards" class="cards"></div>
         <div id="empty" class="empty" style="display:none;">Geen resultaten.</div>
@@ -428,6 +445,7 @@ const COLUMN_ORDER = {
       mBody: document.getElementById("mBody"),
       mClose: document.getElementById("mClose"),
       cards: document.getElementById("cards"),
+      cardSort: document.getElementById("cardSort"),
     };
 
     function isNumberLike(v) {
@@ -750,10 +768,12 @@ function renderMobileCards(rows) {
 
   // Force show/hide via JS (overrules any CSS issues)
   el.cards.style.display = (isStatsTab && isMobile) ? "block" : "none";
+  if (el.cardSort) el.cardSort.style.display = (isStatsTab && isMobile) ? "flex" : "none";
 
   // Only render cards on mobile + stats tabs
   if (!(isStatsTab && isMobile)) {
     el.cards.innerHTML = "";
+    if (el.cardSort) el.cardSort.style.display = "none";
     return;
   }
 
@@ -914,6 +934,19 @@ function renderMobileCards(rows) {
     el.tabs.forEach(btn => btn.addEventListener("click", () => setActive(btn.dataset.dataset)));
     el.search.addEventListener("input", (e) => { state.search = e.target.value; render(); });
     el.limit.addEventListener("change", (e) => { state.limit = Number(e.target.value); render(); });
+    if (el.cardSort) {
+    el.cardSort.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-sort]");
+    if (!btn) return;
+
+    const key = btn.getAttribute("data-sort");
+
+    if (state.sortKey === key) state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+    else { state.sortKey = key; state.sortDir = "desc"; }
+
+    render();
+  });
+}
 
     el.seasonFilter.addEventListener("change", (e) => { state.filterSeason = e.target.value; render(); });
     el.divisionFilter.addEventListener("change", (e) => { state.filterDivision = e.target.value; render(); });
