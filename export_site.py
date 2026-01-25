@@ -1,6 +1,8 @@
 import json
 import os
 import mysql.connector
+from decimal import Decimal
+
 
 MYSQL_HOST = "127.0.0.1"
 MYSQL_PORT = 3306
@@ -13,9 +15,15 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 def dump_json(filename, obj):
     path = os.path.join(OUT_DIR, filename)
+
+    def json_default(x):
+        if isinstance(x, Decimal):
+            return float(x)
+        return str(x)
+
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False)
-    print("✅ wrote", path)
+        json.dump(obj, f, ensure_ascii=False, default=json_default)
+
 
 def main():
     cnx = mysql.connector.connect(
@@ -40,19 +48,39 @@ def main():
 
     # 2) stats_regular
     cur.execute("""
-        SELECT
-          p.slug,
-          s.season_name,
-          d.division_name,
-          r.gp, r.pts, r.min,
-          r.twopm, r.twopa, r.threepm, r.threepa,
-          r.ftm, r.fta, r.reb, r.ast, r.stl, r.`to`, r.blk, r.fls
-        FROM stats_regular r
-        JOIN players p ON p.player_id = r.player_id
-        JOIN seasons s ON s.season_id = r.season_id
-        LEFT JOIN divisions d ON d.division_id = r.division_id
-        ORDER BY p.slug, s.season_id DESC
-    """)
+    SELECT
+        p.slug,
+        s.season_name,
+        d.division_name,
+
+        r.gp,
+        r.pts,
+        ROUND(r.pts / NULLIF(r.gp, 0), 1) AS ppg,
+
+        r.reb,
+        ROUND(r.reb / NULLIF(r.gp, 0), 1) AS rpg,
+
+        r.ast,
+        ROUND(r.ast / NULLIF(r.gp, 0), 1) AS apg,
+
+        r.stl,
+        ROUND(r.stl / NULLIF(r.gp, 0), 1) AS spg,
+
+        r.blk,
+        ROUND(r.blk / NULLIF(r.gp, 0), 1) AS bpg,
+
+        r.min,
+        r.twopm, r.twopa,
+        r.threepm, r.threepa,
+        r.ftm, r.fta,
+        r.to, r.fls
+    FROM stats_regular r
+    JOIN players p ON p.player_id = r.player_id
+    JOIN seasons s ON s.season_id = r.season_id
+    LEFT JOIN divisions d ON d.division_id = r.division_id
+    ORDER BY p.slug, s.season_id DESC
+""")
+
     stats_regular = cur.fetchall()
     dump_json("stats_regular.json", stats_regular)
 
