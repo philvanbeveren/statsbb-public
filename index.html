@@ -743,30 +743,48 @@ const COLUMN_ORDER = {
     }
 function renderMobileCards(rows) {
   const isStatsTab = state.active === "regular" || state.active === "playoffs";
-  if (!isStatsTab) { if (el.cards) el.cards.innerHTML = ""; return; }
+  const isMobile = window.matchMedia("(max-width: 820px)").matches;
 
-  const cards = rows.map(r => {
+  // Safety: if cards element missing, do nothing
+  if (!el.cards) return;
+
+  // Force show/hide via JS (overrules any CSS issues)
+  el.cards.style.display = (isStatsTab && isMobile) ? "block" : "none";
+
+  // Only render cards on mobile + stats tabs
+  if (!(isStatsTab && isMobile)) {
+    el.cards.innerHTML = "";
+    return;
+  }
+
+  // No results
+  if (!rows || rows.length === 0) {
+    el.cards.innerHTML = `<div class="empty">Geen resultaten.</div>`;
+    return;
+  }
+
+  const cardsHtml = rows.map(r => {
     const slug = r?.slug || "";
     const name = r?.player_name || slug || "—";
     const season = r?.season_name || "—";
     const div = labelForDivision(r?.division_name ?? "");
 
-    const pts = r?.pts ?? "";
-    const ppg = r?.ppg ?? "";
-    const reb = r?.reb ?? "";
-    const rpg = r?.rpg ?? "";
-    const ast = r?.ast ?? "";
-    const apg = r?.apg ?? "";
-    const stl = r?.stl ?? "";
-    const spg = r?.spg ?? "";
-    const blk = r?.blk ?? "";
-    const bpg = r?.bpg ?? "";
+    const pts = r?.pts ?? "—";
+    const ppg = r?.ppg ?? "—";
+    const reb = r?.reb ?? "—";
+    const rpg = r?.rpg ?? "—";
+    const ast = r?.ast ?? "—";
+    const apg = r?.apg ?? "—";
+    const stl = r?.stl ?? "—";
+    const spg = r?.spg ?? "—";
+    const blk = r?.blk ?? "—";
+    const bpg = r?.bpg ?? "—";
 
     return `
       <div class="card-item">
         <div class="card-top">
           <div>
-            <div class="card-name player-link" data-slug="${escapeHtml(String(slug))}">
+            <div class="card-name" data-slug="${escapeHtml(String(slug))}">
               ${escapeHtml(String(name))}
             </div>
             <div class="card-sub">${escapeHtml(String(season))} • ${escapeHtml(String(div))}</div>
@@ -787,13 +805,14 @@ function renderMobileCards(rows) {
     `;
   }).join("");
 
-  if (!el.cards) return;
-  el.cards.innerHTML = cards;
+  el.cards.innerHTML = cardsHtml;
 
-  el.cards.querySelectorAll(".player-link, button[data-slug]").forEach(x => {
+  // click handlers (name + button)
+  el.cards.querySelectorAll(".card-name, button[data-slug]").forEach(x => {
     x.addEventListener("click", () => openPlayerModal(x.getAttribute("data-slug")));
   });
 }
+
 
     function render() {
       const shown = applySearchLimitSort();
