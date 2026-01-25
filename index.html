@@ -306,11 +306,11 @@
   </div>
 
   <script>
-    const FILES = {
-      players: "site/data/players.json",
-      regular: "site/data/stats_regular.json",
-      playoffs: "site/data/stats_playoffs.json",
-    };
+ const FILES = {
+  players: "/site/data/players.json",
+  regular: "/site/data/stats_regular.json",
+  playoffs: "/site/data/stats_playoffs.json",
+};
 
     // Division mapping
     const DIVISION_LABELS = {
@@ -489,10 +489,16 @@ const COLUMN_ORDER = {
       return [];
     }
     async function loadJson(url) {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
-      return await res.json();
-    }
+  const res = await fetch(url, { cache: "no-store" });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(`${url} -> HTTP ${res.status} -> ${txt.slice(0,120)}`);
+  try {
+    return JSON.parse(txt);
+  } catch {
+    throw new Error(`${url} -> invalid JSON (first chars: ${txt.slice(0,120)})`);
+  }
+}
+
     async function ensureDatasetLoaded(key) {
       if (state.raw[key]) return;
       el.status.textContent = `Loading ${key}…`;
@@ -1000,9 +1006,9 @@ function render() {
         enrichStatsWithPlayerNames();
         await setActive("players");
       } catch (e) {
-        console.error(e);
-        el.status.textContent = "Fout bij laden van JSON.";
-      }
+  console.error(e);
+  el.status.textContent = "JSON error: " + (e?.message || e);
+}
     })();
   </script>
 </body>
