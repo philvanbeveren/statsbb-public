@@ -33,17 +33,35 @@ def main():
     )
     cur = cnx.cursor(dictionary=True)
 
-    # 1) players
+       # 1) players
     cur.execute("""
-        SELECT player_id, full_name, slug, birth_date
+        SELECT
+            player_id,
+            full_name,
+            slug,
+            birth_date,
+            height,
+            country,
+            position,
+            sex
         FROM players
         ORDER BY full_name
     """)
     players = cur.fetchall()
-    # birth_date JSON-friendly
+
+    # Make JSON-friendly
     for p in players:
-        if p["birth_date"] is not None:
+        # date → string
+        if p.get("birth_date") is not None:
             p["birth_date"] = str(p["birth_date"])
+
+        # optional: ensure height is int (not Decimal/str)
+        if p.get("height") is not None:
+            try:
+                p["height"] = int(p["height"])
+            except:
+                pass
+
     dump_json("players.json", players)
 
     # 2) stats_regular
