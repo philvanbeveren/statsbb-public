@@ -86,19 +86,38 @@ def main():
 
     # 3) stats_playoffs
     cur.execute("""
-        SELECT
-          p.slug,
-          s.season_name,
-          d.division_name,
-          po.gp, po.pts, po.min,
-          po.twopm, po.twopa, po.threepm, po.threepa,
-          po.ftm, po.fta, po.reb, po.ast, po.stl, po.`to`, po.blk, po.fls
-        FROM stats_playoffs po
-        JOIN players p ON p.player_id = po.player_id
-        JOIN seasons s ON s.season_id = po.season_id
-        LEFT JOIN divisions d ON d.division_id = po.division_id
-        ORDER BY p.slug, s.season_id DESC
-    """)
+    SELECT
+        p.slug,
+        s.season_name,
+        d.division_name,
+
+        po.gp,
+        po.pts,
+        ROUND(po.pts / NULLIF(po.gp, 0), 1) AS ppg,
+
+        po.reb,
+        ROUND(po.reb / NULLIF(po.gp, 0), 1) AS rpg,
+
+        po.ast,
+        ROUND(po.ast / NULLIF(po.gp, 0), 1) AS apg,
+
+        po.stl,
+        ROUND(po.stl / NULLIF(po.gp, 0), 1) AS spg,
+
+        po.blk,
+        ROUND(po.blk / NULLIF(po.gp, 0), 1) AS bpg,
+
+        po.min,
+        po.twopm, po.twopa,
+        po.threepm, po.threepa,
+        po.ftm, po.fta,
+        po.`to`, po.fls
+    FROM stats_playoffs po
+    JOIN players p ON p.player_id = po.player_id
+    JOIN seasons s ON s.season_id = po.season_id
+    LEFT JOIN divisions d ON d.division_id = po.division_id
+    ORDER BY p.slug, s.season_id DESC
+""")
     stats_playoffs = cur.fetchall()
     dump_json("stats_playoffs.json", stats_playoffs)
 
