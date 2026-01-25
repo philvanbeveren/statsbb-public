@@ -194,10 +194,10 @@
 .card-actions{ margin-top:10px; display:flex; justify-content:flex-end; }
 .card-actions .btn{ padding:7px 10px; }
 
-/* Only show cards on mobile for stats tabs */
+/* Only show cards on mobile when we are on stats tabs */
 @media (max-width: 820px) {
-  .table-wrap { display:none; }
-  #cards { display:block; }
+  body.stats-mobile .table-wrap { display:none; }
+  body.stats-mobile #cards { display:block; }
 }
 
   </style>
@@ -858,6 +858,7 @@ renderMobileCards(shown);
 
     async function setActive(key) {
       state.active = key;
+      document.body.classList.toggle("stats-mobile", key === "regular" || key === "playoffs");
       el.tabs.forEach(t => t.classList.toggle("active", t.dataset.dataset === key));
 
       await ensureDatasetLoaded(key);
