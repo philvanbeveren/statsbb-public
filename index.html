@@ -632,38 +632,39 @@ function applySearchLimitSort() {
       enrich("playoffs");
     }
 
-    function populateFiltersFromRows(rows) {
-      // only stats tabs show filters
-      const isStats = state.active === "regular" || state.active === "playoffs";
-      el.filters.style.display = "flex";
-      if (!isStats) return;
+ function populateFiltersFromRows(rows) {
+  const isStats = state.active === "regular" || state.active === "playoffs";
 
-      const seasons = new Set();
-      const divisionsRaw = new Set();
+  // Show filters ONLY on stats tabs
+  el.filters.style.display = isStats ? "flex" : "none";
+  if (!isStats) return;
 
-      for (const r of rows) {
-        if (r?.season_name) seasons.add(String(r.season_name));
-        if (r?.division_name !== undefined && r?.division_name !== null) divisionsRaw.add(String(r.division_name));
-      }
+  const seasons = new Set();
+  const divisionsRaw = new Set();
 
-      const seasonList = Array.from(seasons).sort((a,b) => b.localeCompare(a, "nl", { numeric:true }));
-      const divisionList = Array.from(divisionsRaw).sort((a,b) => labelForDivision(a).localeCompare(labelForDivision(b), "nl", { numeric:true }));
+  for (const r of rows) {
+    if (r?.season_name) seasons.add(String(r.season_name));
+    if (r?.division_name !== undefined && r?.division_name !== null) divisionsRaw.add(String(r.division_name));
+  }
 
-      // Build season select
-      el.seasonFilter.innerHTML = `<option value="">All seasons</option>` + seasonList.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
-      // keep selection if still valid
-      if (state.filterSeason && seasonList.includes(state.filterSeason)) el.seasonFilter.value = state.filterSeason;
-      else { state.filterSeason = ""; el.seasonFilter.value = ""; }
+  const seasonList = Array.from(seasons).sort((a,b) => b.localeCompare(a, "nl", { numeric:true }));
+  const divisionList = Array.from(divisionsRaw).sort((a,b) => labelForDivision(a).localeCompare(labelForDivision(b), "nl", { numeric:true }));
 
-      // Build division select: store raw code as value, show label
-      el.divisionFilter.innerHTML = `<option value="">All divisions</option>` + divisionList.map(d => {
-        const lbl = labelForDivision(d);
-        return `<option value="${escapeHtml(d)}">${escapeHtml(lbl)}</option>`;
-      }).join("");
+  el.seasonFilter.innerHTML =
+    `<option value="">All seasons</option>` +
+    seasonList.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
 
-      if (state.filterDivision && divisionList.includes(state.filterDivision)) el.divisionFilter.value = state.filterDivision;
-      else { state.filterDivision = ""; el.divisionFilter.value = ""; }
-    }
+  if (state.filterSeason && seasonList.includes(state.filterSeason)) el.seasonFilter.value = state.filterSeason;
+  else { state.filterSeason = ""; el.seasonFilter.value = ""; }
+
+  el.divisionFilter.innerHTML =
+    `<option value="">All divisions</option>` +
+    divisionList.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(labelForDivision(d))}</option>`).join("");
+
+  if (state.filterDivision && divisionList.includes(state.filterDivision)) el.divisionFilter.value = state.filterDivision;
+  else { state.filterDivision = ""; el.divisionFilter.value = ""; }
+}
+
 
     function openPlayerModal(slug) {
       if (!slug) return;
@@ -822,9 +823,7 @@ function renderMobileCards(rows) {
         <div class="card-top">
           <div>
             <div class="card-name" data-slug="${escapeHtml(String(slug))}">
-  #${rankMap.get(rowKey(r)) ?? "—"} • ${escapeHtml(String(name))}
-</div>
-              ${escapeHtml(String(name))}
+            #${rankMap.get(rowKey(r)) ?? "—"} • ${escapeHtml(String(name))}
             </div>
             <div class="card-sub">${escapeHtml(String(season))} • ${escapeHtml(String(div))}</div>
           </div>
@@ -853,81 +852,91 @@ function renderMobileCards(rows) {
 }
 
 
-    function render() {
-      const { shown, baseCount, rankMap } = applySearchLimitSort();
+function render() {
+  const { shown, baseCount, rankMap } = applySearchLimitSort();
 
-      el.metaLeft.textContent = `Dataset: ${state.active}`;
-      el.metaRight.textContent = `Totaal rijen: ${baseCount} • Na filters/zoek: ${shown.length} • Sort: ${state.sortKey ?? "—"} (${state.sortDir})`;
+  const isPlayersTab = state.active === "players";
+  const isStatsTab = state.active === "regular" || state.active === "playoffs";
 
-      el.empty.style.display = shown.length ? "none" : "block";
-      
-      const colsForRender = (isStatsTab ? ["__rank", ...state.cols] : state.cols);
-      const ths = state.cols.map(col => {
-        const arrow = state.sortKey === col ? (state.sortDir === "asc" ? "▲" : "▼") : "↕";
-        return `<th data-col="${escapeHtml(col)}">${escapeHtml(headerLabel(col))}<span class="arrow">${arrow}</span></th>`;
-      }).join("");
+  el.metaLeft.textContent = `Dataset: ${state.active}`;
+  el.metaRight.textContent = `Totaal rijen: ${baseCount} • Na filters/zoek: ${shown.length} • Sort: ${state.sortKey ?? "—"} (${state.sortDir})`;
 
-      el.thead.innerHTML = `<tr>${ths}</tr>`;
+  el.empty.style.display = shown.length ? "none" : "block";
 
-      const isPlayersTab = state.active === "players";
-      const isStatsTab = state.active === "regular" || state.active === "playoffs";
+  const colsForRender = (isStatsTab ? ["__rank", ...state.cols] : state.cols);
 
-      const rowsHtml = shown.map(r => {
-        const tds = colsForRender.map(col => {
-          const rawVal = r?.[col];
-          // Rank column (only for stats tabs)
-if (col === "__rank") {
-  const rk = rankMap.get(rowKey(r)) ?? "";
-  return `<td class="right">${rk}</td>`;
+  const ths = colsForRender.map(col => {
+    const arrow = state.sortKey === col ? (state.sortDir === "asc" ? "▲" : "▼") : "↕";
+    const arrowShown = (col === "__rank") ? "" : `<span class="arrow">${arrow}</span>`;
+    return `<th data-col="${escapeHtml(col)}">${escapeHtml(headerLabel(col))}${arrowShown}</th>`;
+  }).join("");
+
+  el.thead.innerHTML = `<tr>${ths}</tr>`;
+
+  const rowsHtml = shown.map(r => {
+    const tds = colsForRender.map(col => {
+
+      // Rank column (ONLY stats tabs)
+      if (col === "__rank") {
+        const rk = rankMap.get(rowKey(r)) ?? "";
+        return `<td class="right">${rk}</td>`;
+      }
+
+      const rawVal = r?.[col];
+      const cls = isNumberLike(rawVal) ? "right" : "";
+
+      // clickable player cells
+      if (isPlayersTab && (col === "full_name" || col === "slug")) {
+        const slug = r?.slug;
+        if (typeof slug === "string" && slug) {
+          return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
+        }
+      }
+
+      if (isStatsTab && col === "player_name") {
+        const slug = r?.slug;
+        if (typeof slug === "string" && slug) {
+          return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
+        }
+      }
+
+      if (isStatsTab && col === "slug") {
+        const slug = rawVal;
+        if (typeof slug === "string" && slug) {
+          return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
+        }
+      }
+
+      return `<td class="${cls}">${escapeHtml(formatCell(col, rawVal))}</td>`;
+    }).join("");
+
+    return `<tr>${tds}</tr>`;
+  }).join("");
+
+  el.tbody.innerHTML = rowsHtml;
+
+  // cards
+  renderMobileCards(shown);
+
+  // sort click
+  el.thead.querySelectorAll("th").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.getAttribute("data-col");
+      if (col === "__rank") return;
+
+      if (state.sortKey === col) state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      else { state.sortKey = col; state.sortDir = "desc"; }
+
+      render();
+    });
+  });
+
+  // player click -> modal
+  el.tbody.querySelectorAll(".player-link").forEach(span => {
+    span.addEventListener("click", () => openPlayerModal(span.getAttribute("data-slug")));
+  });
 }
-          const cls = isNumberLike(rawVal) ? "right" : "";
 
-          // clickable player cells
-          if (isPlayersTab && (col === "full_name" || col === "slug")) {
-            const slug = r?.slug;
-            if (typeof slug === "string" && slug) {
-              return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
-            }
-          }
-
-          if (isStatsTab && col === "player_name") {
-            const slug = r?.slug;
-            if (typeof slug === "string" && slug) {
-              return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
-            }
-          }
-
-          if (isStatsTab && col === "slug") {
-            const slug = rawVal;
-            if (typeof slug === "string" && slug) {
-              return `<td class="${cls}"><span class="player-link" data-slug="${escapeHtml(slug)}">${escapeHtml(formatCell(col, rawVal))}</span></td>`;
-            }
-          }
-
-          return `<td class="${cls}">${escapeHtml(formatCell(col, rawVal))}</td>`;
-        }).join("");
-        return `<tr>${tds}</tr>`;
-      }).join("");
-
-      el.tbody.innerHTML = rowsHtml;
-          renderMobileCards(shown);
-
-      // sort click
-      el.thead.querySelectorAll("th").forEach(th => {
-        th.addEventListener("click", () => {
-          const col = th.getAttribute("data-col");
-          if (col === "__rank") return;
-          if (state.sortKey === col) state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-          else { state.sortKey = col; state.sortDir = "desc"; }
-          render();
-        });
-      });
-
-      // player click -> modal
-      el.tbody.querySelectorAll(".player-link").forEach(span => {
-        span.addEventListener("click", () => openPlayerModal(span.getAttribute("data-slug")));
-      });
-    }
 
     async function setActive(key) {
       state.active = key;
