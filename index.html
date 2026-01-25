@@ -306,11 +306,14 @@
   </div>
 
   <script>
+const BASE = new URL("./", window.location.href);
+
 const FILES = {
   players: new URL("site/data/players.json", BASE).toString(),
   regular: new URL("site/data/stats_regular.json", BASE).toString(),
   playoffs: new URL("site/data/stats_playoffs.json", BASE).toString(),
 };
+
 
     // Division mapping
     const DIVISION_LABELS = {
