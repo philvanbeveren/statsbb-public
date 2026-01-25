@@ -194,11 +194,19 @@
 .card-actions{ margin-top:10px; display:flex; justify-content:flex-end; }
 .card-actions .btn{ padding:7px 10px; }
 
-/* Only show cards on mobile when we are on stats tabs */
+/* Default: cards hidden everywhere */
+#cards { display:none; }
+
+/* Only on mobile + stats tabs: hide table, show cards */
 @media (max-width: 820px) {
   body.stats-mobile .table-wrap { display:none; }
   body.stats-mobile #cards { display:block; }
+
+  /* On players tab (no stats-mobile): keep table visible */
+  body:not(.stats-mobile) .table-wrap { display:block; }
+  body:not(.stats-mobile) #cards { display:none; }
 }
+
 
   </style>
 </head>
@@ -838,7 +846,7 @@ function renderMobileCards(rows) {
       }).join("");
 
       el.tbody.innerHTML = rowsHtml;
-renderMobileCards(shown);
+          renderMobileCards(shown);
 
       // sort click
       el.thead.querySelectorAll("th").forEach(th => {
