@@ -672,7 +672,7 @@ function applySearchLimitSort() {
   const isStats = state.active === "regular" || state.active === "playoffs";
 
   // Show filters ONLY on stats tabs
-  el.filters.style.display = isStats ? "flex" : "none";
+  el.filters.style.setProperty("display", isStats ? "flex" : "none", "important");
   if (!isStats) return;
 
   const seasons = new Set();
