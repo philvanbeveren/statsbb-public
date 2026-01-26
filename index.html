@@ -35,9 +35,20 @@
     th { position:sticky; top:0; background:#0f1730; cursor:pointer; user-select:none; text-align:left; }
     th .arrow { opacity:.7; margin-left:6px; }
     tr:hover td { background:rgba(255,255,255,.03); }
-    .muted { color:var(--muted); }
+        .muted { color:var(--muted); }
     .right { text-align:right; }
     .empty { padding:18px; color:var(--muted); font-size:13px; }
+    .right { text-align:right; }
+
+    /* ✅ CENTER HEIGHT COLUMN (players tab only) */
+    body:not(.stats-mobile) #table th:nth-child(3),
+    body:not(.stats-mobile) #table td:nth-child(3) {
+      text-align: center !important;
+      width: 72px;
+    }
+
+    footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
+
     footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
     code { color:#cfe0ff; }
 
