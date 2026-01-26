@@ -360,6 +360,22 @@ const FILES = {
       "18": "Play-offs TDM2",
       "1": "Euromillions League",
     };
+    
+// ✅ gewenste volgorde voor division dropdown (op basis van division code)
+const DIVISION_ORDER = [
+  "13",
+  "10","11","12",
+  "19",
+  "2","3","4",
+  "20","21","22",
+  "14","15","16",
+  "29","30","31",
+  "5","6","7","8","9",
+  "23","24","25","26","27",
+  "1",
+];
+
+const DIV_ORDER_RANK = new Map(DIVISION_ORDER.map((d,i) => [String(d), i]));
 
     // Column order per tab (JSON keys!)
 const COLUMN_ORDER = {
