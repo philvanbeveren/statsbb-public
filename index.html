@@ -328,37 +328,37 @@ const FILES = {
 
     // Division mapping
     const DIVISION_LABELS = {
-      "1": "Euromillions League",
+      "13": "BNXT League",
+      "10": "Top Division Men 1",
+      "11": "Top Division Men 2A",
+      "12": "Top Division Men 2B",
+      "19": "Top Division Women 1",
       "2": "HSE - 1e Landelijke",
       "3": "HSE - 2e Landelijke A",
       "4": "HSE - 2e Landelijke B",
+      "20": "DSE - 1e Landelijke",
+      "21": "DSE - 2e Landelijke A",
+      "22": "DSE - 2e Landelijke B",
+      "14": "HSE - Régional 1",
+      "15": "HSE - Régional 2A",
+      "16": "HSE - Régional 2B",
+      "29": "DSE - Régional 1",
+      "30": "DSE - Régional 2A",
+      "31": "DSE - Régional 2B",
       "5": "HSE - 1P Antwerpen",
       "6": "HSE - 1P Limburg",
       "7": "HSE - 1P Oost-Vlaanderen",
       "8": "HSE - 1P Vlaams-Brabant",
       "9": "HSE - 1P West-Vlaanderen",
-      "10": "Top Division Men 1",
-      "11": "Top Division Men 2A",
-      "12": "Top Division Men 2B",
-      "13": "BNXT League",
-      "14": "HSE - Régional 1",
-      "15": "HSE - Régional 2A",
-      "16": "HSE - Régional 2B",
-      "17": "Play-offs TDM1",
-      "18": "Play-offs TDM2",
-      "19": "Top Division Women 1",
-      "20": "DSE - 1e Landelijke",
-      "21": "DSE - 2e Landelijke A",
-      "22": "DSE - 2e Landelijke B",
       "23": "DSE - 1P Antwerpen",
       "24": "DSE - 1P Limburg",
       "25": "DSE - 1P Oost-Vlaanderen",
       "26": "DSE - 1P Vlaams-Brabant",
       "27": "DSE- 1P West-Vlaanderen",
       "28": "Play-Offs TDW1",
-      "29": "DSE - Régional 1",
-      "30": "DSE - Régional 2A",
-      "31": "DSE - Régional 2B",
+      "17": "Play-offs TDM1",
+      "18": "Play-offs TDM2",
+      "1": "Euromillions League",
     };
 
     // Column order per tab (JSON keys!)
@@ -668,7 +668,16 @@ function applySearchLimitSort() {
   }
 
   const seasonList = Array.from(seasons).sort((a,b) => b.localeCompare(a, "nl", { numeric:true }));
-  const divisionList = Array.from(divisionsRaw).sort((a,b) => labelForDivision(a).localeCompare(labelForDivision(b), "nl", { numeric:true }));
+  const divisionList = Array.from(divisionsRaw).sort((a,b) => {
+  const ra = DIV_ORDER_RANK.has(String(a)) ? DIV_ORDER_RANK.get(String(a)) : 999;
+  const rb = DIV_ORDER_RANK.has(String(b)) ? DIV_ORDER_RANK.get(String(b)) : 999;
+
+  if (ra !== rb) return ra - rb;
+
+  // fallback: onbekende divisies alfabetisch
+  return labelForDivision(a).localeCompare(labelForDivision(b), "nl", { numeric:true });
+});
+
 
   el.seasonFilter.innerHTML =
     `<option value="">All seasons</option>` +
